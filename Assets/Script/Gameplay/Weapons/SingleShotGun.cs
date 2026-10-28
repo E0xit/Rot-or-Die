@@ -17,5 +17,6 @@ public class SingleShotGun : GunBase
         }
 
         nextFireTime = Time.time + fireRate;
+        PlayShootSound();
     }
 }

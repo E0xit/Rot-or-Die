@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,16 +8,15 @@ public class PlayerController : MonoBehaviour
     public Transform leftBoundary;
     public Transform rightBoundary;
 
-    [Header("Weapon System")]
-    public List<GunBase> gunsList;
+    [Header("Weapon System (Fixed 4 Guns)")]
+    [Tooltip("ใส่ปืนเรียงตามลำดับ 4 กระบอก: 0=Single, 1=Shotgun, 2=Sniper, 3=HMG")]
+    public List<GunBase> gunsList = new List<GunBase>(4);
     private int currentGunIndex = 0;
 
     [Header("Melee Combo Settings")]
-    public MeleeWeapon meleeObject;    // ลาก GameObject สี่เหลี่ยมผืนผ้า (ที่มีสคริปต์ MeleeWeapon) มาวาง
-    public Transform meleeSpawnPoint;  // จุดโผล่ตรงหน้า Player
-    
-    // Pattern คอมโบ: true = ทวนเข็ม (CCW), false = ตามเข็ม (CW)
-    // ลำดับ: ทวนเข็ม -> ทวนเข็ม -> ตามเข็ม
+    public MeleeWeapon meleeObject;
+    public Transform meleeSpawnPoint;
+    public int CurrentGunIndex => currentGunIndex;
     private bool[] comboPattern = new bool[] { true, true, false };
     private int currentComboIndex = 0;
 
@@ -27,6 +25,13 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         mainCamera = Camera.main;
+
+        // กำหนดกระสุนแบบ Infinite ให้กับปืน SingleShot (ปืนกระบอกแรก index 0)
+        if (gunsList.Count > 0 && gunsList[0] != null)
+        {
+            gunsList[0].isInfiniteAmmo = true;
+        }
+
         EquipGun(0);
     }
 
@@ -34,7 +39,7 @@ public class PlayerController : MonoBehaviour
     {
         HandleMovement();
         HandleRotation();
-        HandleWeaponSwitching();
+        HandleWeaponSwitchingFixed();
         HandleCombat();
     }
 
@@ -62,25 +67,28 @@ public class PlayerController : MonoBehaviour
 
     private void HandleCombat()
     {
-        // เช็คว่ากำลังฟันอยู่หรือไม่
         bool isMeleeing = meleeObject != null && meleeObject.IsSwinging;
 
-        // ⚔️ กด Melee (คลิกขวาอย่างเดียว เอา E ออกเพื่อไม่ให้ตีกับปุ่มสลับปืน)
+        // ⚔️ กด Melee (คลิกขวา)
         if (Input.GetButtonDown("Fire2"))
         {
             if (!isMeleeing && meleeObject != null)
             {
+                // 🛑 โดน Melee ขัดจังหวะ -> สั่ง Reset State ปืนปัจจุบันทันที (เช่น HMG กลับมาช้าเหมือนเดิม)
+                if (GetCurrentGun() != null) GetCurrentGun().ResetGunState();
+
                 PerformMeleeCombo();
                 return;
             }
         }
 
-        // 🔫 กดยิง (คลิกซ้าย) -> จะยิงได้ก็ต่อเมื่อ "ไม่ได้กำลังฟันมีดอยู่"
+        // 🔫 กดยิง (คลิกซ้าย)
         if (Input.GetButton("Fire1") && !isMeleeing)
         {
-            if (gunsList.Count > 0 && gunsList[currentGunIndex] != null)
+            GunBase currentGun = GetCurrentGun();
+            if (currentGun != null)
             {
-                gunsList[currentGunIndex].Shoot();
+                currentGun.Shoot();
             }
         }
     }
@@ -88,55 +96,58 @@ public class PlayerController : MonoBehaviour
     private void PerformMeleeCombo()
     {
         bool isCounterClockwise = comboPattern[currentComboIndex];
-
         Vector3 spawnPos = meleeSpawnPoint != null ? meleeSpawnPoint.position : transform.position;
         StartCoroutine(meleeObject.ExecuteSwing(spawnPos, transform.rotation, isCounterClockwise));
 
         currentComboIndex = (currentComboIndex + 1) % comboPattern.Length;
     }
 
-    private void HandleWeaponSwitching()
+    // 🎯 สลับปืนตายตัว 4 ปุ่ม (ปุ่ม 1, 2, 3, 4 บนคีย์บอร์ด)
+    private void HandleWeaponSwitchingFixed()
     {
-        // ถ้าไม่มีปืน หรือมีแค่ปืนเดียว ไม่ต้องสลับให้เสียเวลา
-        if (gunsList == null || gunsList.Count <= 1) return;
-
-        int previousIndex = currentGunIndex;
-
-        // 1. ตรวจจับ Input จาก Scroll Wheel และปุ่ม Q / E
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-
-        // ถอนลูกกลิ้งขึ้น (Scroll Up) หรือ กด E -> สลับไปปืนถัดไป (Next Weapon)
-        if (scroll > 0f || Input.GetKeyDown(KeyCode.E))
-        {
-            currentGunIndex = (currentGunIndex + 1) % gunsList.Count;
-        }
-        // เลื่อนลูกกลิ้งลง (Scroll Down) หรือ กด Q -> สลับไปปืนก่อนหน้า (Previous Weapon)
-        else if (scroll < 0f || Input.GetKeyDown(KeyCode.Q))
-        {
-            // บวก gunsList.Count เพิ่มเพื่อกันไม่ให้ค่าติดลบก่อน Modulo เจ้าค่ะ
-            currentGunIndex = (currentGunIndex - 1 + gunsList.Count) % gunsList.Count;
-        }
-
-        // 2. ถ้ามีการเปลี่ยน Index จริงๆ ถึงค่อยเรียก EquipGun สลับภาพ/โมเดล
-        if (previousIndex != currentGunIndex)
-        {
-            EquipGun(currentGunIndex);
-        }
+        if (Input.GetKeyDown(KeyCode.Alpha1)) EquipGun(0);
+        else if (Input.GetKeyDown(KeyCode.Alpha2)) EquipGun(1);
+        else if (Input.GetKeyDown(KeyCode.Alpha3)) EquipGun(2);
+        else if (Input.GetKeyDown(KeyCode.Alpha4)) EquipGun(3);
+        else if (Input.GetKeyDown(KeyCode.Alpha5)) EquipGun(4);
     }
 
     private void EquipGun(int index)
     {
-        if (gunsList == null || gunsList.Count == 0) return;
-        if (index < 0 || index >= gunsList.Count) return;
+        if (gunsList == null || gunsList.Count <= index || index < 0) return;
+
+        // สั่ง Reset ปืนเก่าก่อนสลับไปปืนใหม่
+        if (GetCurrentGun() != null) GetCurrentGun().ResetGunState();
 
         currentGunIndex = index;
 
-        // เปิดเฉพาะปืนที่เลือกอยู่ ปิดปืนที่เหลือให้หมด
         for (int i = 0; i < gunsList.Count; i++)
         {
             if (gunsList[i] != null)
             {
                 gunsList[i].gameObject.SetActive(i == currentGunIndex);
+            }
+        }
+    }
+
+    private GunBase GetCurrentGun()
+    {
+        if (gunsList != null && currentGunIndex < gunsList.Count)
+        {
+            return gunsList[currentGunIndex];
+        }
+        return null;
+    }
+
+    // เติมใส่ในสคริปต์ PlayerController.cs เจ้าค่ะ
+    public void RefillAmmoByPercent(float percent)
+    {
+        foreach (GunBase gun in gunsList)
+        {
+            if (gun != null && !gun.isInfiniteAmmo)
+            {
+                int amountToAdd = Mathf.CeilToInt(gun.maxAmmo * (percent / 100f));
+                gun.currentAmmo = Mathf.Min(gun.currentAmmo + amountToAdd, gun.maxAmmo);
             }
         }
     }
