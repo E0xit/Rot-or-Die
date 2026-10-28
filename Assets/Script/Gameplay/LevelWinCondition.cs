@@ -33,11 +33,20 @@ public class LevelWinCondition : MonoBehaviour
 
     [Header("⏳ Delay before Scene Transition")]
     public float delayBeforeLoad = 1.5f;
+    public int CurrentKilledCount => currentKilledCount;
+    public int CurrentSpawnedCount => currentSpawnedCount;
 
     private bool isGameWon = false;
     public GameObject playerObject;
     public float delayBeforeGameOver = 3f; // ปรับเวลาหน่วงก่อนวาร์ปไปฉาก GameOver
     public string gameOverSceneName = "GameOver";
+    private void Start()
+    {
+        // 📝 บันทึกชื่อ Scene ปัจจุบันเก็บไว้เป็นด่านล่าสุด!
+        string currentSceneName = SceneManager.GetActiveScene().name;
+        PlayerPrefs.SetString("LastPlayedLevel", currentSceneName);
+        PlayerPrefs.Save();
+    }
     private void Update()
     {
         if (isGameWon) return;
@@ -70,8 +79,8 @@ public class LevelWinCondition : MonoBehaviour
 
         currentKilledCount++;
 
-        // เช็คว่าเสกครบตามจำนวน และผู้เล่นเก็บหมดทุกตัวแล้วหรือยัง!
-        if (currentSpawnedCount >= totalEnemiesToSpawn && currentKilledCount >= currentSpawnedCount)
+        // 🎯 ฆ่าศัตรูครบตามจำนวนเป้าหมายที่ตั้งไว้เมื่อไหร่ -> ชนะทันที!
+        if (currentKilledCount >= totalEnemiesToSpawn)
         {
             TriggerWin();
         }

@@ -812,7 +812,7 @@ MonoBehaviour:
   damage: 20
   fireRate: 20
   isInfiniteAmmo: 0
-  maxAmmo: 100
+  maxAmmo: 200
   currentAmmo: 0
   bulletPrefab: {fileID: 7264010446471186409, guid: 455d658a63a39231aa67aa424d173b2e, type: 3}
   firePoint: {fileID: 7849464698874712155}

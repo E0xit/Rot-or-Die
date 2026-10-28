@@ -205,11 +205,15 @@ public class Walker : MonoBehaviour, IDamageable
     /// </summary>
     private void Death()
     {
-        // 🎲 สุ่ม Roll ดรอปไอเทมตอนตาย
-    if (itemDropPrefab != null && UnityEngine.Random.Range(0f, 100f) <= dropChance)
-    {
-        Instantiate(itemDropPrefab, transform.position, Quaternion.identity);
-    }
+        LevelWinCondition winManager = FindAnyObjectByType<LevelWinCondition>();
+        if (winManager != null)
+        {
+            winManager.OnEnemyKilled();
+        }
+        if (itemDropPrefab != null && UnityEngine.Random.Range(0f, 100f) <= dropChance)
+        {
+            Instantiate(itemDropPrefab, transform.position, Quaternion.identity);
+        }
         if (explosion != null)
         {
             Instantiate(death, transform.position, transform.rotation);

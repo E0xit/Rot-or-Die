@@ -200,7 +200,11 @@ public class Charger : MonoBehaviour, IDamageable
     private void Death()
     {
         currentState = ChargerState.Dead;
-
+        LevelWinCondition winManager = FindAnyObjectByType<LevelWinCondition>();
+        if (winManager != null)
+        {
+            winManager.OnEnemyKilled();
+        }
         if (itemDropPrefab != null && Random.Range(0f, 100f) <= dropChance)
         {
             Instantiate(itemDropPrefab, transform.position, Quaternion.identity);
